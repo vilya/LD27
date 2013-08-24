@@ -1,0 +1,20 @@
+# Blender MTL File: 'scout.blend'
+# Material Count: 2
+
+newmtl BlackChrome
+Ns 131.372549
+Ka 0.000000 0.000000 0.000000
+Kd 0.011736 0.011736 0.011736
+Ks 0.871134 0.871134 0.871134
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl SilverChrome
+Ns 201.960784
+Ka 0.000000 0.000000 0.000000
+Kd 0.373761 0.348742 0.344055
+Ks 1.000000 1.000000 1.000000
+Ni 1.000000
+d 1.000000
+illum 2
