@@ -423,7 +423,7 @@ var ld27 = function () { // start of the ld27 namespace
 
     this.height = 1.8;                // height of eyes above ground level, in metres.
     this.moveSpeed = 10.0;            // movement speed in metres per second.
-    this.turnSpeed = Math.PI / 256.0; // turning speed in radians per pixel.
+    this.turnSpeed = Math.PI / 1000.0; // turning speed in radians per pixel.
 
     this.rotation = new THREE.Vector2(0.0, 0.0);
     this.extraRotation = new THREE.Vector2(0.0, 0.0);
@@ -479,16 +479,15 @@ var ld27 = function () { // start of the ld27 namespace
       }
     }
 
-    if (ludum.isButtonPressed(ludum.buttons.LEFT)) {
-      var dx = ludum.mouse.x - this.lastX;
-      var dy = ludum.mouse.y - this.lastY;
+    // Look around following the mouse.
+    var dx = ludum.mouse.x - this.lastX;
+    var dy = ludum.mouse.y - this.lastY;
 
-      var thetaX = -dy * this.turnSpeed;
-      var thetaY = -dx * this.turnSpeed;
+    var thetaX = -dy * this.turnSpeed;
+    var thetaY = -dx * this.turnSpeed;
 
-      this.extraRotation.set(thetaX, thetaY);
-      this.rotation.add(this.extraRotation);
-    }
+    this.extraRotation.set(thetaX, thetaY);
+    this.rotation.add(this.extraRotation);
 
     this.lastX = ludum.mouse.x;
     this.lastY = ludum.mouse.y;
