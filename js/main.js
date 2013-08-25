@@ -1,18 +1,16 @@
 // The scene graph is structured like this:
 //
 //  world
+//    ambient light
+//    sun light (a directional light).
 //    level
-//      ambient light
-//      sun light (a directional light).
 //      floor (a single large card)
 //      buildings
 //        ...individual buildings...
-//    mobs
-//      ...individual mobs...
+//    enemies
+//        ...individual mobs...
 //    player
 //    camera
-//      torch (spotlight)
-//    goal
 
 var ld27 = function () { // start of the ld27 namespace
 
@@ -50,6 +48,18 @@ var ld27 = function () { // start of the ld27 namespace
     'glowy': null,
     'ominous': null,
   };
+
+  var levels = [
+    {
+      'name': 'level1',
+      'width': 100,
+      'depth': 100,
+      'buildings': [
+        new Building(20, 10, 0, 5, 20, 5, 0x555555),
+        new Building(-10, 20, 30, 5, 30, 5, 0x555555)
+      ]
+    },
+  ];
 
 
   //
@@ -96,19 +106,21 @@ var ld27 = function () { // start of the ld27 namespace
     world = new THREE.Scene();
     camera = _createCamera();
 
-    var level = new THREE.Object3D();
     var ambientLight = new THREE.AmbientLight(0x909090);
     var sunLight = new THREE.DirectionalLight(0xFFFF66);
     var enemies = new THREE.Object3D();
+    var level = _createLevel(levels[0]);
 
     world.name = "world";
-    level.name = "level";
     ambientLight.name = "ambientLight";
     sunLight.name = "sunLight";
     enemies.name = "enemies";
     camera.name = "camera";
 
-    sunLight.position.set(100, 100, 0);
+    world.fog = new THREE.Fog(0x555555, 5, 40);
+
+    sunLight.position.set(80, 40, 0);
+    sunLight.castShadow = true;
 
     world.add(ambientLight);
     world.add(sunLight);
@@ -146,6 +158,26 @@ var ld27 = function () { // start of the ld27 namespace
 
     hud.add(hudCamera);
     hud.add(hudMain.mesh);
+  }
+
+
+  function _createLevel(levelInfo)
+  {
+    var level = new THREE.Object3D();
+    var groundGeometry = new THREE.CubeGeometry(levelInfo.width, 0.5, levelInfo.depth);
+    var groundMaterial = new THREE.MeshPhongMaterial({ 'color': 0x444444 });
+    var ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    
+    level.name = levelInfo.name;
+    ground.name = "ground";
+    ground.receiveShadow = true;
+    ground.position.set(0.0, -0.25, 0.0);
+
+    level.add(ground);
+    for (var i = 0, end = levelInfo.buildings.length; i < end; ++i)
+      level.add(levelInfo.buildings[i].mesh);
+
+    return level;
   }
 
 
@@ -287,8 +319,8 @@ var ld27 = function () { // start of the ld27 namespace
     this.controlledObj.matrixAutoUpdate = true;
 
     this.height = 1.8;                // height of eyes above ground level, in metres.
-    this.moveSpeed = 5.0;             // movement speed in metres per second.
-    this.turnSpeed = Math.PI / 512.0; // turning speed in radians per pixel.
+    this.moveSpeed = 10.0;            // movement speed in metres per second.
+    this.turnSpeed = Math.PI / 256.0; // turning speed in radians per pixel.
 
     this.rotation = new THREE.Vector2(0.0, 0.0);
     this.extraRotation = new THREE.Vector2(0.0, 0.0);
@@ -349,6 +381,32 @@ var ld27 = function () { // start of the ld27 namespace
 
     this.controlledObj.position.copy(this.translation);
     this.controlledObj.rotation.set(this.rotation.x, this.rotation.y, 0.0, 'YXZ');
+  }
+
+
+  //
+  // The Building class
+  //
+
+  function Building(x, z, orientation, width, height, depth, color)
+  {
+    this.x = x;
+    this.z = z;
+    this.orientation = ludum.radians(orientation); // rotation about the y axis.
+    this.width = width;
+    this.height = height;
+    this.depth = depth;
+
+    var materialColor = (color === undefined) ? 0x999999 : color;
+
+    this.geometry = new THREE.CubeGeometry(width, height, depth);
+    this.material = new THREE.MeshPhongMaterial({ 'color': materialColor });
+    this.mesh = new THREE.Mesh(this.geometry, this.material);
+
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = true;
+    this.mesh.position.set(x, this.height / 2.0, z);
+    this.mesh.rotation.set(0.0, this.orientation, 0.0);
   }
 
 
