@@ -1292,7 +1292,8 @@ var ludum = function () {  // start of the ludum namespace
     'clamp': clamp,
     'saturate': saturate,
     // Intersection testing classes
-    'RayBoxIntersector': RayBoxIntersector
+    'RayBoxIntersector': RayBoxIntersector,
+    'RaySphereIntersector': RaySphereIntersector
   };
 
 }(); // end of the ludum namespace.
