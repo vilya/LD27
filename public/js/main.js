@@ -62,12 +62,20 @@ var ld27 = function () { // start of the ld27 namespace
       'width': 100,
       'depth': 100,
       'buildings': [
+        //{ 'x':  1, 'z':  1, 'orientation':  0, 'w':  2, 'h': 2, 'd':  2, 'color': 0x555560 },
         { 'x':  20, 'z':  10, 'orientation':  0, 'w':  5, 'h': 20, 'd':  5, 'color': 0x555560 },
         { 'x': -10, 'z':  20, 'orientation': 30, 'w':  5, 'h': 30, 'd':  5, 'color': 0x555555 },
         { 'x':  30, 'z': -20, 'orientation':  0, 'w': 10, 'h': 10, 'd': 25, 'color': 0x555555 },
       ]
     },
   ];
+
+  var player = {
+    'radius': 0.5,
+  };
+
+  var rayBox = new ludum.RayBoxIntersector();
+  var raySphere = new ludum.RaySphereIntersector();
 
 
   //
@@ -277,8 +285,8 @@ var ld27 = function () { // start of the ld27 namespace
       console.log("entered 'playing' state");
 
       // Add a scout mesh to the scene. TODO: once the spawning logic is in place, take this out.
-      meshes.scout.translateOnAxis(Y_AXIS, 1.25);
-      meshes.scout.translateOnAxis(Z_AXIS, -5.0);
+      meshes.scout.translateOnAxis(Y_AXIS, 1.8);
+      //meshes.scout.translateOnAxis(Z_AXIS, -5.0);
       world.getObjectByName('enemies').add(meshes.scout);
 
       // Set up FPS-style controls and use them to position the camera.
@@ -396,7 +404,7 @@ var ld27 = function () { // start of the ld27 namespace
 
     this.rotation = new THREE.Vector2(0.0, 0.0);
     this.extraRotation = new THREE.Vector2(0.0, 0.0);
-    this.translation = new THREE.Vector3(0.0, this.height, 0.0);
+    this.translation = new THREE.Vector3(0.0, this.height, 5.0);
     this.extraTranslation = new THREE.Vector3(0.0, 0.0, 0.0);
     this.transform = new THREE.Matrix4();
     this.tmpMatrix = new THREE.Matrix4();
@@ -434,8 +442,18 @@ var ld27 = function () { // start of the ld27 namespace
       this.transform.makeRotationY(this.rotation.y);
       this.extraTranslation.applyMatrix4(this.transform);
 
-      // Add 'extraTranslation' to the current translation.
-      this.translation.add(this.extraTranslation);
+      // Check if the extra translation would move us into an obstacle. If so,
+      // stop (for now).
+      var level = levels[0];
+      var stop = hitLevelBoundary(level, this.translation, this.extraTranslation, player.radius);
+      if (!stop)
+        stop = hitBuilding(level, this.translation, this.extraTranslation, player.radius);
+      if (!stop)
+        stop = hitEnemy(this.translation, this.extraTranslation, player.radius);
+      if (!stop) {
+        // Add 'extraTranslation' to the current translation.
+        this.translation.add(this.extraTranslation);
+      }
     }
 
     if (ludum.isButtonPressed(ludum.buttons.LEFT)) {
@@ -502,6 +520,81 @@ var ld27 = function () { // start of the ld27 namespace
     objLoader.addEventListener('load', function (ev) { onLoad(ev.content); });
     objLoader.addEventListener('error', function (ev) { onError(ev.message); });
     objLoader.load(objURL, mtlURL);
+  }
+
+
+  //
+  // Collision detection
+  //
+
+  function hitGround(pos, delta)
+  {
+    return pos.y + delta.y < 0;
+  }
+
+
+  function hitLevelBoundary(level, pos, delta, offset)
+  {
+    var x = pos.x + delta.x,
+        z = pos.z + delta.z;
+    return (Math.abs(x) + offset) > (level.width / 2.0) ||
+           (Math.abs(z) + offset) > (level.depth / 2.0);
+  }
+
+
+  function hitBuilding(level, pos, delta, offset)
+  {
+    var localPos = new THREE.Vector3();
+    var localDelta = new THREE.Vector3();
+
+    for (var i = 0, end = level.buildings.length; i < end; ++i) {
+      var building = level.buildings[i];
+
+      localPos.copy(pos);
+      building.mesh.worldToLocal(localPos);
+
+      localDelta.copy(pos);
+      localDelta.add(delta);
+      building.mesh.worldToLocal(localDelta);
+      localDelta.sub(localPos);
+
+      var halfW = building.w / 2.0;
+      var halfH = building.h / 2.0;
+      var halfD = building.d / 2.0;
+      var t1 = localDelta.length() + offset;
+
+      rayBox.setRaySrc(localPos.x, localPos.y, localPos.z);
+      rayBox.setRayDir(localDelta.x, localDelta.y, localDelta.z, true);
+      rayBox.setBox(-halfW, -halfH, -halfD, halfW, halfH, halfD);
+
+      if (rayBox.shadowIntersect(0, t1))
+        return true;
+    }
+
+    return false;
+  }
+
+
+  function hitEnemy(pos, delta, offset)
+  {
+    raySphere.setRaySrc(pos.x, pos.y, pos.z);
+    raySphere.setRayDir(delta.x, delta.y, delta.z, true);
+
+    var t0 = 0.00001;
+    var t1 = delta.length() + offset;
+
+    var enemyRadius = 1.0;
+    var enemies = world.getObjectByName('enemies').children;
+    var enemyPos = new THREE.Vector3();
+    for (var i = 0, end = enemies.length; i < end; ++i) {
+      enemyPos.set(0.0, 0.0, 0.0);
+      enemies[i].localToWorld(enemyPos);
+      raySphere.setSphere(enemyPos.x, enemyPos.y, enemyPos.z, enemyRadius);
+      if (raySphere.shadowIntersect(0, t1))
+        return true;
+    }
+
+    return false;
   }
 
 
