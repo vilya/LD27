@@ -355,10 +355,11 @@ var ld27 = function () { // start of the ld27 namespace
       this.extraTranslation.normalize();
       this.extraTranslation.multiplyScalar(this.moveSpeed * dt);
 
-      // Transform 'extraTranslation' by the current rotation amounts.
+      // Transform 'extraTranslation' by the current rotation amounts. Note
+      // that the only rotate around the y axis, because rotating
+      // extraTranslation around the x axis means you can move off the ground
+      // plane - and we want the player to stay on it.
       this.transform.makeRotationY(this.rotation.y);
-      this.tmpMatrix.makeRotationX(this.rotation.x);
-      this.transform.multiply(this.tmpMatrix);
       this.extraTranslation.applyMatrix4(this.transform);
 
       // Add 'extraTranslation' to the current translation.
