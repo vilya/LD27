@@ -39,6 +39,8 @@ var ld27 = function () { // start of the ld27 namespace
   var hud = null;
   var hudCamera = null;
   var hudMain = null;
+  var hudAmmo = null;
+  var hudLife = null;
 
   var meshes = {
     'scout': null,
@@ -58,6 +60,8 @@ var ld27 = function () { // start of the ld27 namespace
 
   var icons = {
     'crosshairs': null,
+    'life': null,
+    'ammo': null
   };
 
   var levels = [
@@ -76,6 +80,8 @@ var ld27 = function () { // start of the ld27 namespace
 
   var player = {
     'radius': 0.5,
+    'life': 100,
+    'ammo': 5,
   };
 
   var rayBox = new ludum.RayBoxIntersector();
@@ -120,6 +126,8 @@ var ld27 = function () { // start of the ld27 namespace
 
       // Load the icons.
       loader.addImage('img/crosshairs.png', null, function (val) { icons.crosshairs = val; return true; });
+      loader.addImage('img/life.png', null, function (val) { icons.life = val; return true; });
+      loader.addImage('img/ammo.png', null, function (val) { icons.ammo = val; return true; });
 
       // Start loading.
       loader.start();
@@ -198,14 +206,23 @@ var ld27 = function () { // start of the ld27 namespace
     var w = renderer.domElement.width;
     var h = renderer.domElement.height;
 
+    var hudW = 256, hudH = 64, hudGap = 8;
+    var hudX = 8 + hudW / 2,
+        hudY = 8 + hudH / 2;
+
     hud = new THREE.Scene();
     hudCamera = new THREE.OrthographicCamera(0, w, h, 0, -100, 100);
     hudMain = new HUD(w / 2, h / 2, 1024, 256, 1.0, "96px LEDDisplay7", "middle", 0x1189AB);
+    hudLife = new HUD(hudX, hudY, hudW, hudH, 0.8, "48px LEDDisplay7", "left", 0x1189AB);
+    hudY += hudH + hudGap;
+    hudAmmo = new HUD(hudX, hudY, hudW, hudH, 0.8, "48px LEDDisplay7", "left", 0x1189AB);
 
     hud.name = "hud";
 
     hud.add(hudCamera);
     hud.add(hudMain.mesh);
+    hud.add(hudLife.mesh);
+    hud.add(hudAmmo.mesh);
   }
 
 
@@ -321,6 +338,9 @@ var ld27 = function () { // start of the ld27 namespace
       controls.update(dt / 1000.0);
 
       // TODO: all the game logic!
+
+      // Update the HUDs. 
+      _updateHUDs();
     },
 
     'leave': function ()
@@ -330,24 +350,36 @@ var ld27 = function () { // start of the ld27 namespace
   };
 
 
+  function _updateHUDs()
+  {
+    var ammoStr = player.ammo.toString();
+    var lifeStr = ("00" + player.life + "%").slice(-4);
+
+    hudAmmo.setText(ammoStr, icons.ammo);
+    hudLife.setText(lifeStr, icons.life);
+  }
+
+
   //
   // The HUD class
   //
 
   function HUD(x, y, w, h, opacity, font, halign, color)
   {
+    this.w = w;
+    this.h = h;
+    this.font = font;
+    this.halign = halign;
+    this.colorHex = '#' + (("00000" + color.toString(16)).slice(-6));
+
     this.canvas = document.createElement('canvas');
     this.canvas.width = w;
     this.canvas.height = h;
     this.canvas.style.display = 'none';
     document.body.appendChild(this.canvas);
 
-    var colorHex = color.toString(16);
-    while (colorHex.length < 6)
-      colorHex = "0" + colorHex;
-
     this.ctx = this.canvas.getContext('2d');
-    this.ctx.fillStyle = "#" + colorHex;
+    this.ctx.fillStyle = this.colorHex;
     this.ctx.font = font;
     this.ctx.textAlign = halign;
     this.ctx.textBaseline = "middle";
@@ -385,9 +417,12 @@ var ld27 = function () { // start of the ld27 namespace
 
     this.ctx.clearRect(0, 0, w, h);
     if (icon) {
+      var iw = icon.width;
       var ih = icon.height;
       var iy = Math.min((h - ih) / 2, 4);
       this.ctx.drawImage(icon, 4, iy);
+      if (this.halign == "left")
+        x = iw + 8;
     }
     this.ctx.fillText(msg, x, y);
 
@@ -407,6 +442,20 @@ var ld27 = function () { // start of the ld27 namespace
 
     this.ctx.clearRect(0, 0, w, h);
     this.ctx.drawImage(icon, x, y);
+
+    this.texture.needsUpdate = true;
+  }
+
+
+  HUD.prototype.onResize = function ()
+  {
+    this.canvas.width = this.w;
+    this.canvas.height = this.h;
+    
+    this.ctx.fillStyle = this.colorHex;
+    this.ctx.font = this.font;
+    this.ctx.textAlign = this.halign;
+    this.ctx.textBaseline = "middle";
 
     this.texture.needsUpdate = true;
   }
@@ -737,6 +786,10 @@ var ld27 = function () { // start of the ld27 namespace
     camera.updateProjectionMatrix();
 
     renderer.setSize(width, height);
+
+    hudMain.onResize();
+    hudAmmo.onResize();
+    hudLife.onResize();
   }
 
 
