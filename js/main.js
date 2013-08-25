@@ -45,6 +45,11 @@ var ld27 = function () { // start of the ld27 namespace
     'scout': null,
   };
 
+  var music = {
+    'glowy': null,
+    'ominous': null,
+  };
+
 
   //
   // The 'loading' state
@@ -57,14 +62,14 @@ var ld27 = function () { // start of the ld27 namespace
       _createWorld();
       _createHUD();
 
-      // Load the audio assets
-      ludum.addSound('music/Glowy', 'music/Glowy.ogg');
-      ludum.addSound('music/Ominous', 'music/Ominous.ogg');
-
       // Create an asset loader.
       loader = new ludum.Loader();
 
-      // Add assets for loading.
+      // Load the audio assets
+      loader.addAudio('music/Glowy.ogg', null, function (val) { music.glowy = val; return true; });
+      loader.addAudio('music/Ominous.ogg', null, function (val) { music.ominous = val; return true; });
+
+      // Load the models.
       loader.addCustom('models/scout.obj', null, function (val) { meshes.scout = val; return true; }, _startOBJLoader, 'models/scout.mtl');
 
       // Start loading.
@@ -147,14 +152,18 @@ var ld27 = function () { // start of the ld27 namespace
   var loadingFinishedStateFuncs = {
     'enter': function ()
     {
-      // TODO: do any necessary post-initialisation.
+      // Show that loading has finished.
       hudMain.setText("loading 100%");
+
+      // Start the background music.
+      music.ominous.loop = true;
+      music.ominous.play();
     },
 
     'draw': function ()
     {
       loadingStateFuncs.draw();
-    }
+    },
   };
 
 
@@ -175,7 +184,8 @@ var ld27 = function () { // start of the ld27 namespace
       controls = new FPSControls(camera);
 
       // Clear the main HUD.
-      //hudMain.setText("");
+      hudMain.setText("");
+
     },
 
     'draw': function ()
