@@ -3,6 +3,7 @@
 //  world
 //    level
 //      ambient light
+//      sun light (a directional light).
 //      floor (a single large card)
 //      buildings
 //        ...individual buildings...
@@ -96,21 +97,24 @@ var ld27 = function () { // start of the ld27 namespace
     camera = _createCamera();
 
     var level = new THREE.Object3D();
-    var ambientLight = new THREE.AmbientLight(0x202020);
     var ambientLight = new THREE.AmbientLight(0x909090);
+    var sunLight = new THREE.DirectionalLight(0xFFFF66);
     var enemies = new THREE.Object3D();
 
     world.name = "world";
     level.name = "level";
     ambientLight.name = "ambientLight";
+    sunLight.name = "sunLight";
     enemies.name = "enemies";
     camera.name = "camera";
 
+    sunLight.position.set(100, 100, 0);
+
+    world.add(ambientLight);
+    world.add(sunLight);
     world.add(level);
     world.add(enemies);
     world.add(camera);
-
-    level.add(ambientLight);
   }
 
 
@@ -154,10 +158,6 @@ var ld27 = function () { // start of the ld27 namespace
     {
       // Show that loading has finished.
       hudMain.setText("loading 100%");
-
-      // Start the background music.
-      music.ominous.loop = true;
-      music.ominous.play();
     },
 
     'draw': function ()
@@ -177,6 +177,7 @@ var ld27 = function () { // start of the ld27 namespace
       console.log("entered 'playing' state");
 
       // Add a scout mesh to the scene. TODO: once the spawning logic is in place, take this out.
+      meshes.scout.translateOnAxis(Y_AXIS, 1.25);
       meshes.scout.translateOnAxis(Z_AXIS, -5.0);
       world.getObjectByName('enemies').add(meshes.scout);
 
@@ -186,6 +187,9 @@ var ld27 = function () { // start of the ld27 namespace
       // Clear the main HUD.
       hudMain.setText("");
 
+      // Start the background music.
+      //music.ominous.loop = true;
+      //music.ominous.play();
     },
 
     'draw': function ()
@@ -282,7 +286,7 @@ var ld27 = function () { // start of the ld27 namespace
     this.controlledObj = controlledObj;
     this.controlledObj.matrixAutoUpdate = true;
 
-    this.height = 0.0;                // height of eyes above ground level, in metres.
+    this.height = 1.8;                // height of eyes above ground level, in metres.
     this.moveSpeed = 5.0;             // movement speed in metres per second.
     this.turnSpeed = Math.PI / 512.0; // turning speed in radians per pixel.
 
@@ -420,7 +424,7 @@ var ld27 = function () { // start of the ld27 namespace
     ludum.addGameConditionEvent('loading', finishedLoadingPredicate, 'loadingFinished');
 
     // Set up events for the 'loadingFinished' state.
-    ludum.addChangeStateAtTimeEvent('loadingFinished', 2.0, 'playing');
+    ludum.addChangeStateAtTimeEvent('loadingFinished', 1.0, 'playing');
 
     // Set up events for the 'playing' state.
     // (No events yet...)
