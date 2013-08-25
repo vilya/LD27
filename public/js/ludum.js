@@ -1064,9 +1064,9 @@ var ludum = function () {  // start of the ludum namespace
     this.rayInvDir[0] = 1.0 / this.rayDir[0];
     this.rayInvDir[1] = 1.0 / this.rayDir[1];
     this.rayInvDir[2] = 1.0 / this.rayDir[2];
-    this.sign[0] = (rayInvDir[0] < 0) ? 1 : 0;
-    this.sign[1] = (rayInvDir[1] < 0) ? 1 : 0;
-    this.sign[2] = (rayInvDir[2] < 0) ? 1 : 0;
+    this.sign[0] = (this.rayInvDir[0] < 0) ? 1 : 0;
+    this.sign[1] = (this.rayInvDir[1] < 0) ? 1 : 0;
+    this.sign[2] = (this.rayInvDir[2] < 0) ? 1 : 0;
   }
 
 
