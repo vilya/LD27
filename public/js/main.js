@@ -49,15 +49,22 @@ var ld27 = function () { // start of the ld27 namespace
     'ominous': null,
   };
 
+  var textures = {
+    'gravel': null,
+    'grass': null,
+    'bitumen': null,
+    'patterned_metal': null
+  };
+
   var levels = [
     {
       'name': 'level1',
       'width': 100,
       'depth': 100,
       'buildings': [
-        new Building(20, 10, 0, 5, 20, 5, 0x555560),
-        new Building(-10, 20, 30, 5, 30, 5, 0x555555),
-        new Building(30, -20, 00, 10, 10, 50, 0x555555)
+        { 'x':  20, 'z':  10, 'orientation':  0, 'w':  5, 'h': 20, 'd':  5, 'color': 0x555560 },
+        { 'x': -10, 'z':  20, 'orientation': 30, 'w':  5, 'h': 30, 'd':  5, 'color': 0x555555 },
+        { 'x':  30, 'z': -20, 'orientation':  0, 'w': 10, 'h': 10, 'd': 25, 'color': 0x555555 },
       ]
     },
   ];
@@ -87,7 +94,17 @@ var ld27 = function () { // start of the ld27 namespace
           meshes.scout.castShadow = true;
           meshes.scout.receiveShadow = true;
           return true;
-      }, _startOBJLoader, 'models/scout.mtl');
+      }, _startOBJLoader);
+
+      // Load the textures for the level.
+      loader.addGroup(levels[0].name, function () {
+        var thisLevel = _createLevel(levels[0]);
+        world.add(thisLevel);
+      });
+      loader.addImage('img/gravel.jpg', levels[0].name, function (val) { textures.gravel = _tiledTexture(val, 50, 50, false); return true; });
+      loader.addImage('img/grass.jpg', levels[0].name, function (val) { textures.grass = _tiledTexture(val, 50, 50, true); return true; });
+      loader.addImage('img/bitumen.jpg', levels[0].name, function (val) { textures.bitumen = _tiledTexture(val, 20, 20, false); return true; });
+      loader.addImage('img/patterned_metal.jpg', levels[0].name, function (val) { textures.patterned_metal = _tiledTexture(val, 4, 10, false); return true; });
 
       // Start loading.
       loader.start();
@@ -114,25 +131,26 @@ var ld27 = function () { // start of the ld27 namespace
 
     var ambientLight = new THREE.AmbientLight(0x101010);
     var sunLight = new THREE.DirectionalLight(0xEFEFFF);
+    //var skyLight = new THREE.HemisphereLight(0xA3E6F0, 0xDAD1BC, 0.2);
     var enemies = new THREE.Object3D();
-    var level = _createLevel(levels[0]);
 
     world.name = "world";
     ambientLight.name = "ambientLight";
     sunLight.name = "sunLight";
+    //skyLight.name = "skyLight";
     enemies.name = "enemies";
     camera.name = "camera";
 
-    world.fog = new THREE.Fog(0x555555, 5, 40);
+    world.fog = new THREE.Fog(0x555555, 10, 50);
 
     sunLight.position.set(80, 40, 0);
     sunLight.castShadow = true;
-    sunLight.shadowMapWidth = 2048;
-    sunLight.shadowMapHeight = 2048;
+    sunLight.shadowMapWidth = 1024;
+    sunLight.shadowMapHeight = 1024;
 
     world.add(ambientLight);
     world.add(sunLight);
-    world.add(level);
+    //world.add(skyLight);
     world.add(enemies);
     world.add(camera);
   }
@@ -149,6 +167,13 @@ var ld27 = function () { // start of the ld27 namespace
     var farClip = 1000.0;
 
     camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearClip, farClip);
+
+    /*
+    var cameraLight = new THREE.SpotLight(0xffffff);
+    cameraLight.castShadow = true;
+    camera.add(cameraLight);
+    */
+
     return camera;
   }
 
@@ -160,7 +185,7 @@ var ld27 = function () { // start of the ld27 namespace
 
     hud = new THREE.Scene();
     hudCamera = new THREE.OrthographicCamera(0, w, h, 0, -100, 100);
-    hudMain = new HUD(w / 2, h / 2, 1024, 256, 1.0, "128px ArabDances", "middle");
+    hudMain = new HUD(w / 2, h / 2, 1024, 256, 1.0, "96px LEDDisplay7", "middle", 0x1189AB);
 
     hud.name = "hud";
 
@@ -172,20 +197,48 @@ var ld27 = function () { // start of the ld27 namespace
   function _createLevel(levelInfo)
   {
     var level = new THREE.Object3D();
-    var groundGeometry = new THREE.CubeGeometry(levelInfo.width, 0.5, levelInfo.depth);
-    var groundMaterial = new THREE.MeshPhongMaterial({ 'color': 0x444444 });
-    var ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    
     level.name = levelInfo.name;
+
+    var groundGeometry = new THREE.CubeGeometry(levelInfo.width, 0.5, levelInfo.depth);
+    var groundMaterial = new THREE.MeshPhongMaterial({
+        'color': 0x444444,
+        'shininess': 5.0,
+        //'map': textures.gravel,
+        //'map': textures.grass,
+        'map': textures.bitumen,
+    });
+    var ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.name = "ground";
     ground.receiveShadow = true;
     ground.position.set(0.0, -0.25, 0.0);
-
     level.add(ground);
-    for (var i = 0, end = levelInfo.buildings.length; i < end; ++i)
-      level.add(levelInfo.buildings[i].mesh);
+
+    for (var i = 0, end = levelInfo.buildings.length; i < end; ++i) {
+      var info = levelInfo.buildings[i];
+      var building = new Building(info.x, info.z, info.orientation, info.w, info.h, info.d);
+      building.buildMesh(textures.patterned_metal, info.color);
+      level.add(building.mesh);
+      levelInfo.buildings[i] = building;
+    }
 
     return level;
+  }
+
+
+  function _tiledTexture(img, sRepeat, tRepeat, mirrored)
+  {
+    var tex = new THREE.Texture(img);
+    if (mirrored) {
+      tex.wrapS = THREE.MirroredRepeatWrapping;
+      tex.wrapT = THREE.MirroredRepeatWrapping;
+    }
+    else {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+    }
+    tex.repeat.set(sRepeat, tRepeat);
+    tex.needsUpdate = true;
+    return tex;
   }
 
 
@@ -259,7 +312,7 @@ var ld27 = function () { // start of the ld27 namespace
   // The HUD class
   //
 
-  function HUD(x, y, w, h, opacity, font, halign, icon)
+  function HUD(x, y, w, h, opacity, font, halign, color, icon)
   {
     this.canvas = document.createElement('canvas');
     this.canvas.width = w;
@@ -267,8 +320,12 @@ var ld27 = function () { // start of the ld27 namespace
     this.canvas.style.display = 'none';
     document.body.appendChild(this.canvas);
 
+    var colorHex = color.toString(16);
+    while (colorHex.length < 6)
+      colorHex = "0" + colorHex;
+
     this.ctx = this.canvas.getContext('2d');
-    this.ctx.fillStyle = "#900";
+    this.ctx.fillStyle = "#" + colorHex;
     this.ctx.font = font;
     this.ctx.textAlign = halign;
     this.ctx.textBaseline = "middle";
@@ -397,24 +454,33 @@ var ld27 = function () { // start of the ld27 namespace
   // The Building class
   //
 
-  function Building(x, z, orientation, width, height, depth, color)
+  function Building(x, z, orientation, width, height, depth)
   {
     this.x = x;
     this.z = z;
     this.orientation = ludum.radians(orientation); // rotation about the y axis.
-    this.width = width;
-    this.height = height;
-    this.depth = depth;
+    this.w = width;
+    this.h = height;
+    this.d = depth;
 
+    this.mesh = null;
+  }
+
+
+  Building.prototype = {};
+
+
+  Building.prototype.buildMesh = function (map, color)
+  {
     var materialColor = (color === undefined) ? 0x999999 : color;
 
-    this.geometry = new THREE.CubeGeometry(width, height, depth);
-    this.material = new THREE.MeshPhongMaterial({ 'color': materialColor });
-    this.mesh = new THREE.Mesh(this.geometry, this.material);
+    var geometry = new THREE.CubeGeometry(this.w, this.h, this.d);
+    var material = new THREE.MeshPhongMaterial({ 'color': materialColor, 'map': map });
+    this.mesh = new THREE.Mesh(geometry, material);
 
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
-    this.mesh.position.set(x, this.height / 2.0, z);
+    this.mesh.position.set(this.x, this.h / 2.0, this.z);
     this.mesh.rotation.set(0.0, this.orientation, 0.0);
   }
 
@@ -436,6 +502,41 @@ var ld27 = function () { // start of the ld27 namespace
   // Main functions
   //
 
+  function basicRenderer(width, height)
+  {
+    var renderer = new THREE.WebGLRenderer({ antialias: true });
+
+    //renderer.shadowMapEnabled = true;
+    //renderer.shadowMapSoft = false;
+    //renderer.shadowMapType = THREE.BasicShadowMap;
+    //renderer.shadowMapCascade = true;
+    //renderer.shadowMapDebug = true;
+    //renderer.physicallyBasedShading = true;
+
+    renderer.setSize(width, height);
+
+    return renderer;
+  }
+
+
+  function deferredRenderer(width, height)
+  {
+    var renderer = new THREE.WebGLDeferredRenderer({
+      'width': width,
+      'height': height,
+      'scale': 1,
+      'antialias': true,
+      'tonemapping': THREE.FilmicOperator,
+      'brightness': 2.5
+    });
+
+    var bloomEffect = new THREE.BloomPass(0.65);
+    renderer.addEffect(bloomEffect);
+
+    return renderer;
+  }
+
+
   function initRenderer()
   {
     // Initialise the Three.JS renderer.
@@ -449,26 +550,14 @@ var ld27 = function () { // start of the ld27 namespace
     // Set up the three.js renderer.
     var caps = ludum.browserCapabilities();
     if (caps.webgl) {
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.shadowMapEnabled = true;
-      renderer.shadowMapSoft = false;
-      //renderer.shadowMapType = THREE.BasicShadowMap;
-      renderer.shadowMapCascade = true;
-      //renderer.shadowMapDebug = true;
-      renderer.physicallyBasedShading = true;
-    }
-    else if (caps.canvas) {
-      ludum.showWarning("<strong>Your browser doesn't appear to support " +
-                        "WebGL.</strong> You may get lower frame rates and/or " +
-                        "poorer image quality as a result. Sorry!");
-      renderer = new THREE.CanvasRenderer();
+      renderer = basicRenderer(width, height);
+      //renderer = deferredRenderer(width, height);
     }
     else {
-      ludum.showError("<strong>Your browser doesn't appear to support WebGL " +
-                      "<em>or</em> Canvas.</strong> Unable to continue. Sorry!");
+      ludum.showError("<strong>Your browser doesn't appear to support WebGL.</strong> Unable to continue. Sorry!");
       return false;
     }
-    renderer.setSize(width, height);
+
     document.getElementById('viewport').appendChild(renderer.domElement);
 
     window.addEventListener('resize', setSize, false);
