@@ -55,8 +55,9 @@ var ld27 = function () { // start of the ld27 namespace
       'width': 100,
       'depth': 100,
       'buildings': [
-        new Building(20, 10, 0, 5, 20, 5, 0x555555),
-        new Building(-10, 20, 30, 5, 30, 5, 0x555555)
+        new Building(20, 10, 0, 5, 20, 5, 0x555560),
+        new Building(-10, 20, 30, 5, 30, 5, 0x555555),
+        new Building(30, -20, 00, 10, 10, 50, 0x555555)
       ]
     },
   ];
@@ -81,7 +82,12 @@ var ld27 = function () { // start of the ld27 namespace
       loader.addAudio('music/Ominous.ogg', null, function (val) { music.ominous = val; return true; });
 
       // Load the models.
-      loader.addCustom('models/scout.obj', null, function (val) { meshes.scout = val; return true; }, _startOBJLoader, 'models/scout.mtl');
+      loader.addCustom('models/scout.obj', null, function (val) {
+          meshes.scout = val;
+          meshes.scout.castShadow = true;
+          meshes.scout.receiveShadow = true;
+          return true;
+      }, _startOBJLoader, 'models/scout.mtl');
 
       // Start loading.
       loader.start();
@@ -106,8 +112,8 @@ var ld27 = function () { // start of the ld27 namespace
     world = new THREE.Scene();
     camera = _createCamera();
 
-    var ambientLight = new THREE.AmbientLight(0x909090);
-    var sunLight = new THREE.DirectionalLight(0xFFFF66);
+    var ambientLight = new THREE.AmbientLight(0x101010);
+    var sunLight = new THREE.DirectionalLight(0xEFEFFF);
     var enemies = new THREE.Object3D();
     var level = _createLevel(levels[0]);
 
@@ -121,6 +127,8 @@ var ld27 = function () { // start of the ld27 namespace
 
     sunLight.position.set(80, 40, 0);
     sunLight.castShadow = true;
+    sunLight.shadowMapWidth = 2048;
+    sunLight.shadowMapHeight = 2048;
 
     world.add(ambientLight);
     world.add(sunLight);
@@ -443,7 +451,11 @@ var ld27 = function () { // start of the ld27 namespace
     if (caps.webgl) {
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.shadowMapEnabled = true;
-      renderer.shadowMapSoft = true;
+      renderer.shadowMapSoft = false;
+      //renderer.shadowMapType = THREE.BasicShadowMap;
+      renderer.shadowMapCascade = true;
+      //renderer.shadowMapDebug = true;
+      renderer.physicallyBasedShading = true;
     }
     else if (caps.canvas) {
       ludum.showWarning("<strong>Your browser doesn't appear to support " +
