@@ -141,7 +141,7 @@ var ld27 = function () { // start of the ld27 namespace
     enemies.name = "enemies";
     camera.name = "camera";
 
-    world.fog = new THREE.Fog(0x555555, 10, 50);
+    world.fog = new THREE.Fog(0xADD8E6, 10, 50);
 
     sunLight.position.set(80, 40, 0);
     sunLight.castShadow = true;
