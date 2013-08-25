@@ -706,7 +706,8 @@ var ludum = function () {  // start of the ludum namespace
 
   Loader.prototype.TEXT = 0;
   Loader.prototype.IMAGE = 1;
-  Loader.prototype.CUSTOM = 2;
+  Loader.prototype.AUDIO = 2;
+  Loader.prototype.CUSTOM = 3;
 
 
   Loader.prototype.addGroup = function (name, postprocess)
@@ -734,6 +735,12 @@ var ludum = function () {  // start of the ludum namespace
   Loader.prototype.addImage = function (url, group, postprocess)
   {
     this._addAsset(Loader.prototype.IMAGE, url, group, postprocess, null, []);
+  }
+
+
+  Loader.prototype.addAudio = function (url, group, postprocess)
+  {
+    this._addAsset(Loader.prototype.AUDIO, url, group, postprocess, null, []);
   }
 
 
@@ -809,7 +816,7 @@ var ludum = function () {  // start of the ludum namespace
       return;
 
     if (this.verbose) {
-      var typeStr = [ "text", "image", "custom" ][type];
+      var typeStr = [ "text", "image", "audio", "custom" ][type];
       console.log("adding " + typeStr + " asset: " + url);
     }
 
@@ -854,6 +861,16 @@ var ludum = function () {  // start of the ludum namespace
         img.onload = function () { this.loader._onLoaded(url, this); }
         img.onerror = function () { this.loader._onFailed(url, "image loading failed"); }
         img.src = url;
+        break;
+      case Loader.prototype.AUDIO:
+        var auElem = document.createElement('audio');
+        auElem.preload = true;
+        auElem.controls = false;
+        auElem.loader = this;
+        auElem.addEventListener('canplaythrough', function () { this.loader._onLoaded(url, this); });
+        auElem.addEventListener('error', function () { this.loader._onLoaded(url, this); });
+        auElem.src = url;
+        document.body.appendChild(auElem);
         break;
       case Loader.prototype.CUSTOM:
         var theLoader = this;
