@@ -213,6 +213,13 @@ var ld27 = function () { // start of the ld27 namespace
     ground.position.set(0.0, -0.25, 0.0);
     level.add(ground);
 
+    var skyRadius = Math.max(levelInfo.width, levelInfo.depth) * 2;
+    var skyGeometry = new THREE.SphereGeometry(skyRadius);
+    var skyMaterial = new THREE.MeshBasicMaterial({ 'color': 0xB0E0E6, 'side': THREE.BackSide });
+    var sky = new THREE.Mesh(skyGeometry, skyMaterial);
+    sky.name = "sky";
+    level.add(sky);
+
     for (var i = 0, end = levelInfo.buildings.length; i < end; ++i) {
       var info = levelInfo.buildings[i];
       var building = new Building(info.x, info.z, info.orientation, info.w, info.h, info.d);
