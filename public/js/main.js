@@ -506,10 +506,10 @@ var ld27 = function () { // start of the ld27 namespace
   {
     var renderer = new THREE.WebGLRenderer({ antialias: true });
 
-    //renderer.shadowMapEnabled = true;
-    //renderer.shadowMapSoft = false;
+    renderer.shadowMapEnabled = true;
+    renderer.shadowMapSoft = false;
     //renderer.shadowMapType = THREE.BasicShadowMap;
-    //renderer.shadowMapCascade = true;
+    renderer.shadowMapCascade = true;
     //renderer.shadowMapDebug = true;
     //renderer.physicallyBasedShading = true;
 
