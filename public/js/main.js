@@ -56,6 +56,10 @@ var ld27 = function () { // start of the ld27 namespace
     'patterned_metal': null
   };
 
+  var icons = {
+    'crosshairs': null,
+  };
+
   var levels = [
     {
       'name': 'level1',
@@ -113,6 +117,9 @@ var ld27 = function () { // start of the ld27 namespace
       loader.addImage('img/grass.jpg', levels[0].name, function (val) { textures.grass = _tiledTexture(val, 50, 50, true); return true; });
       loader.addImage('img/bitumen.jpg', levels[0].name, function (val) { textures.bitumen = _tiledTexture(val, 20, 20, false); return true; });
       loader.addImage('img/patterned_metal.jpg', levels[0].name, function (val) { textures.patterned_metal = _tiledTexture(val, 4, 10, false); return true; });
+
+      // Load the icons.
+      loader.addImage('img/crosshairs.png', null, function (val) { icons.crosshairs = val; return true; });
 
       // Start loading.
       loader.start();
@@ -293,7 +300,7 @@ var ld27 = function () { // start of the ld27 namespace
       controls = new FPSControls(camera);
 
       // Clear the main HUD.
-      hudMain.setText("");
+      hudMain.setIcon(icons.crosshairs);
 
       // Start the background music.
       //music.ominous.loop = true;
@@ -327,7 +334,7 @@ var ld27 = function () { // start of the ld27 namespace
   // The HUD class
   //
 
-  function HUD(x, y, w, h, opacity, font, halign, color, icon)
+  function HUD(x, y, w, h, opacity, font, halign, color)
   {
     this.canvas = document.createElement('canvas');
     this.canvas.width = w;
@@ -356,14 +363,13 @@ var ld27 = function () { // start of the ld27 namespace
     this.mesh.translateOnAxis(Y_AXIS, y);
 
     this.halign = halign;
-    this.icon = icon;
   }
 
 
   HUD.prototype = {};
 
 
-  HUD.prototype.setText = function (msg)
+  HUD.prototype.setText = function (msg, icon)
   {
     var w = this.canvas.width;
     var h = this.canvas.height;
@@ -378,12 +384,29 @@ var ld27 = function () { // start of the ld27 namespace
       x = (w - tw) / 2;
 
     this.ctx.clearRect(0, 0, w, h);
-    if (this.icon) {
+    if (icon) {
       var ih = icon.height;
       var iy = Math.min((h - ih) / 2, 4);
       this.ctx.drawImage(icon, 4, iy);
     }
     this.ctx.fillText(msg, x, y);
+
+    this.texture.needsUpdate = true;
+  }
+
+
+  HUD.prototype.setIcon = function (icon)
+  {
+    var w = this.canvas.width,
+        h = this.canvas.height,
+        iw = icon.width,
+        ih = icon.height;
+
+    var x = (w - iw) / 2,
+        y = (h - ih) / 2;
+
+    this.ctx.clearRect(0, 0, w, h);
+    this.ctx.drawImage(icon, x, y);
 
     this.texture.needsUpdate = true;
   }
