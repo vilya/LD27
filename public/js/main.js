@@ -956,8 +956,8 @@ var ld27 = function () { // start of the ld27 namespace
     renderer.domElement.addEventListener('mouseout', function () { if (controls) controls.disable(); }, false);
     renderer.domElement.addEventListener('mouseover', function () { if (controls) controls.enable(); }, false);
 
-    if (caps.pointerlock)
-      ludum.lockPointer(renderer.domElement);
+    document.oncontextmenu = function () { return false; }
+    document.body.oncontextmenu = function () { return false; }
 
     return true;
   }
