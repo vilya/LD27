@@ -4,12 +4,18 @@ var ld27controls = function() { //start of the ld27controls namespace
   // FPSControls class
   //
 
-  function FPSControls(controlledObj, domElement)
+  // The 'obstacle' param is a callack function which takes the following
+  // arguments:
+  // - 'pos'  A THREE.Vector3 giving the current position.
+  // - 'move' A THREE.Vector3 giving the amount we want to move by.
+  // It returns true if there is an obstacle in the way of that move.
+  function FPSControls(controlledObj, domElement, obstacle)
   {
     this.controlledObj = controlledObj;
     this.controlledObj.matrixAutoUpdate = true;
 
     this.domElement = domElement;
+    this.obstacle = obstacle;
 
     this.height = 1.8;                // height of eyes above ground level, in metres.
     this.moveSpeed = 10.0;            // movement speed in metres per second.
@@ -85,12 +91,9 @@ var ld27controls = function() { //start of the ld27controls namespace
 
       // Check if the extra translation would move us into an obstacle. If so,
       // stop (for now).
-      var level = levels[0];
-      var stop = hitLevelBoundary(level, this.translation, this.extraTranslation, player.radius);
-      if (!stop)
-        stop = hitBuilding(level, this.translation, this.extraTranslation, player.radius);
-      if (!stop)
-        stop = hitEnemy(this.translation, this.extraTranslation, player.radius);
+      var stop = false;
+      if (this.obstacle)
+        stop = this.obstacle(this.translation, this.extraTranslation);
       if (!stop) {
         // Add 'extraTranslation' to the current translation.
         this.translation.add(this.extraTranslation);

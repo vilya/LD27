@@ -354,12 +354,16 @@ var ld27 = function () { // start of the ld27 namespace
   var playingStateFuncs = {
     'enter': function ()
     {
-      // Add a scout mesh to the scene. TODO: once the spawning logic is in place, take this out.
-      meshes.scout.position.set(0, 1.8, 0);
-      world.getObjectByName('enemies').add(meshes.scout);
-
       // Set up FPS-style movement controls and use them to position the camera.
-      controls = new ld27controls.FPSControls(camera, renderer.domElement);
+      controls = new ld27controls.FPSControls(camera, renderer.domElement, function (pos, move) {
+        var level = levels[currentLevel];
+        var stop = hitLevelBoundary(level, pos, move, player.radius);
+        if (!stop)
+          stop = hitBuilding(level, pos, move, player.radius);
+        if (!stop)
+          stop = hitEnemy(pos, move, player.radius);
+        return stop;
+      });
 
       // Clear the main HUD.
       hudMain.setIcon(icons.crosshairs);
