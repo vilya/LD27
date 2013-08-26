@@ -352,7 +352,7 @@ var ld27 = function () { // start of the ld27 namespace
       controls.update(dt);
 
       // TODO: all the game logic!
-      player.life = Math.max(player.life - dt, 0);
+      player.life = Math.max(player.life - 10 * dt, 0);
       if (ludum.isButtonPressed(ludum.buttons.LEFT)) {
         if (ludum.globals.stateT - player.lastShotT > player.minShotSpacing) {
           player.ammo = Math.max(player.ammo - 1, 0);
