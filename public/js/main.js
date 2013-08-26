@@ -354,8 +354,6 @@ var ld27 = function () { // start of the ld27 namespace
   var playingStateFuncs = {
     'enter': function ()
     {
-      console.log("entered 'playing' state");
-
       // Add a scout mesh to the scene. TODO: once the spawning logic is in place, take this out.
       meshes.scout.position.set(0, 1.8, 0);
       world.getObjectByName('enemies').add(meshes.scout);
@@ -627,6 +625,7 @@ var ld27 = function () { // start of the ld27 namespace
     ludum.useMouse();
 
     // Set up the game states.
+    ludum.config.logStateTransitions = true; // For debugging
     ludum.addState('loading', loadingStateFuncs);
     ludum.addState('loadingFinished', loadingFinishedStateFuncs);
     ludum.addState('playing', playingStateFuncs);
