@@ -29,6 +29,8 @@ var ld27 = function () { // start of the ld27 namespace
   // Global variables
   //
 
+  var caps = ludum.browserCapabilities();
+
   var loader = null;
   var renderer = null;
 
@@ -79,9 +81,11 @@ var ld27 = function () { // start of the ld27 namespace
   ];
 
   var player = {
-    'radius': 0.5,
-    'life': 100,
-    'ammo': 5,
+    'radius': 0.5,          // Radius of the player, for collision detection.
+    'life': 100,            // Amount of life left. Bad news when this reaches zero...
+    'ammo': 5,              // Number of shots remaining.
+    'minShotSpacing': 1.0,  // Minimum time between shots in seconds.
+    'lastShotT': 0,         // Time the last shot was taken, in seconds since the start of the current state.
   };
 
   var rayBox = new ludum.RayBoxIntersector();
@@ -316,15 +320,20 @@ var ld27 = function () { // start of the ld27 namespace
       //meshes.scout.translateOnAxis(Z_AXIS, -5.0);
       world.getObjectByName('enemies').add(meshes.scout);
 
-      // Set up FPS-style controls and use them to position the camera.
+      // Set up FPS-style movement controls and use them to position the camera.
       controls = new FPSControls(camera, renderer.domElement);
 
       // Clear the main HUD.
       hudMain.setIcon(icons.crosshairs);
 
       // Start the background music.
-      //music.ominous.loop = true;
-      //music.ominous.play();
+      music.ominous.loop = true;
+      music.ominous.play();
+
+      // Reset the player.
+      player.life = 100;
+      player.ammo = 5;
+      player.lastShotT = -player.minShotSpacing;
     },
 
     'draw': function ()
@@ -337,30 +346,54 @@ var ld27 = function () { // start of the ld27 namespace
 
     'update': function (dt)
     {
-      // dt is in milliseconds, so we'll convert it to seconds for the controls.
-      controls.update(dt / 1000.0);
+      // dt is in milliseconds, so we'll convert it to seconds for convenience.
+      var dt = dt / 1000.0;
+
+      // Guess what we're doing here...
+      controls.update(dt);
 
       // TODO: all the game logic!
-
+      player.life = Math.max(player.life - dt, 0);
+      if (ludum.isButtonPressed(ludum.buttons.LEFT)) {
+        if (ludum.globals.stateT - player.lastShotT > player.minShotSpacing) {
+          player.ammo = Math.max(player.ammo - 1, 0);
+          player.lastShotT = ludum.globals.stateT;
+        }
+      }
       // Update the HUDs. 
       _updateHUDs();
     },
-
-    'leave': function ()
-    {
-      controls.enabled = false;
-    }
   };
 
 
   function _updateHUDs()
   {
     var ammoStr = player.ammo.toString();
-    var lifeStr = ("00" + player.life + "%").slice(-4);
+    var lifeStr = ludum.roundTo(player.life, 0) + "%";
 
     hudAmmo.setText(ammoStr, icons.ammo);
     hudLife.setText(lifeStr, icons.life);
   }
+
+
+
+  //
+  // The 'dead' state
+  //
+
+  var deadStateFuncs = {
+    'enter': function ()
+    {
+      hudAmmo.setText("");
+      hudLife.setText("");
+      hudMain.setText("Dead");
+    },
+
+    'draw': function ()
+    {
+      playingStateFuncs.draw();
+    },
+  };
 
 
   //
@@ -462,6 +495,9 @@ var ld27 = function () { // start of the ld27 namespace
 
     this.texture.needsUpdate = true;
   }
+    var finishedLoadingPredicate = function () {
+      return loader.finished();
+    };
 
 
   //
@@ -756,7 +792,6 @@ var ld27 = function () { // start of the ld27 namespace
     var farClip = 1000.0;
 
     // Set up the three.js renderer.
-    var caps = ludum.browserCapabilities();
     if (caps.webgl) {
       renderer = basicRenderer(width, height);
       //renderer = deferredRenderer(width, height);
@@ -775,6 +810,9 @@ var ld27 = function () { // start of the ld27 namespace
     renderer.domElement.addEventListener('mouseout', function () { if (controls) controls.disable(); }, false);
     renderer.domElement.addEventListener('mouseover', function () { if (controls) controls.enable(); }, false);
 
+    if (caps.pointerlock)
+      ludum.lockPointer(renderer.domElement);
+
     return true;
   }
 
@@ -789,18 +827,19 @@ var ld27 = function () { // start of the ld27 namespace
     ludum.addState('loading', loadingStateFuncs);
     ludum.addState('loadingFinished', loadingFinishedStateFuncs);
     ludum.addState('playing', playingStateFuncs);
+    ludum.addState('dead', deadStateFuncs);
 
     // Set up events for the 'loading' state.
-    var finishedLoadingPredicate = function () {
-      return loader.finished();
-    };
-    ludum.addGameConditionEvent('loading', finishedLoadingPredicate, 'loadingFinished');
+    ludum.addGameConditionEvent('loading', function () { return loader.finished(); }, 'loadingFinished');
 
     // Set up events for the 'loadingFinished' state.
     ludum.addChangeStateAtTimeEvent('loadingFinished', 1.0, 'playing');
 
     // Set up events for the 'playing' state.
-    // (No events yet...)
+    ludum.addGameConditionEvent('playing', function () { return player.life == 0; }, 'dead');
+
+    // Set up events for the 'dead' state.
+    ludum.addChangeStateAtTimeEvent('dead', 5.0, 'playing');
 
     return true;
   }
