@@ -223,6 +223,9 @@ var ld27 = function () { // start of the ld27 namespace
     hud.add(hudMain.mesh);
     hud.add(hudLife.mesh);
     hud.add(hudAmmo.mesh);
+
+    hudLife.setText("");
+    hudAmmo.setText("");
   }
 
 
@@ -314,7 +317,7 @@ var ld27 = function () { // start of the ld27 namespace
       world.getObjectByName('enemies').add(meshes.scout);
 
       // Set up FPS-style controls and use them to position the camera.
-      controls = new FPSControls(camera);
+      controls = new FPSControls(camera, renderer.domElement);
 
       // Clear the main HUD.
       hudMain.setIcon(icons.crosshairs);
@@ -465,10 +468,12 @@ var ld27 = function () { // start of the ld27 namespace
   // Input handling functions
   //
 
-  function FPSControls(controlledObj)
+  function FPSControls(controlledObj, domElement)
   {
     this.controlledObj = controlledObj;
     this.controlledObj.matrixAutoUpdate = true;
+
+    this.domElement = domElement;
 
     this.height = 1.8;                // height of eyes above ground level, in metres.
     this.moveSpeed = 10.0;            // movement speed in metres per second.
@@ -485,14 +490,34 @@ var ld27 = function () { // start of the ld27 namespace
 
     this.lastX = ludum.mouse.x; // The mouse X position when the mouse-look began.
     this.lastY = ludum.mouse.y; // The mouse Y position when the mouse-look began.
+
+    if (document.hasFocus())
+      this.state = FPSControls.prototype.ENABLING;
+    else
+      this.state = FPSControls.prototype.DISABLED;
   }
 
 
   FPSControls.prototype = {};
 
+  // FPSControls state constants.
+  FPSControls.prototype.DISABLED = 0;
+  FPSControls.prototype.ENABLING = 1;
+  FPSControls.prototype.ENABLED = 2;
+
 
   FPSControls.prototype.update = function (dt)
   {
+    if (!document.hasFocus() || this.state == FPSControls.prototype.DISABLED)
+      return;
+
+    if (this.state == FPSControls.prototype.ENABLING) {
+      this.lastX = ludum.mouse.x;
+      this.lastY = ludum.mouse.y;
+      this.state = FPSControls.prototype.ENABLED;
+      return;
+    }
+
     this.extraTranslation.set(0, 0, 0);
     if (ludum.isKeyPressed('A') || ludum.isKeyPressed(ludum.keycodes.LEFT))
       this.extraTranslation.x -= 1.0;
@@ -538,11 +563,23 @@ var ld27 = function () { // start of the ld27 namespace
     this.extraRotation.set(thetaX, thetaY);
     this.rotation.add(this.extraRotation);
 
-    this.lastX = ludum.mouse.x;
-    this.lastY = ludum.mouse.y;
-
     this.controlledObj.position.copy(this.translation);
     this.controlledObj.rotation.set(this.rotation.x, this.rotation.y, 0.0, 'YXZ');
+
+    this.lastX = ludum.mouse.x;
+    this.lastY = ludum.mouse.y;
+  }
+
+
+  FPSControls.prototype.enable = function ()
+  {
+    this.state = FPSControls.prototype.ENABLING;
+  }
+
+
+  FPSControls.prototype.disable = function ()
+  {
+    this.state = FPSControls.prototype.DISABLED;
   }
 
 
@@ -733,6 +770,11 @@ var ld27 = function () { // start of the ld27 namespace
 
     window.addEventListener('resize', setSize, false);
 
+    renderer.domElement.addEventListener('focus', function () { if (controls) controls.enable(); }, false);
+    renderer.domElement.addEventListener('blur', function () { if (controls) controls.disable(); }, false);
+    renderer.domElement.addEventListener('mouseout', function () { if (controls) controls.disable(); }, false);
+    renderer.domElement.addEventListener('mouseover', function () { if (controls) controls.enable(); }, false);
+
     return true;
   }
 
@@ -787,9 +829,9 @@ var ld27 = function () { // start of the ld27 namespace
 
     renderer.setSize(width, height);
 
-    hudMain.onResize();
-    hudAmmo.onResize();
-    hudLife.onResize();
+//    hudMain.onResize();
+//    hudAmmo.onResize();
+//    hudLife.onResize();
   }
 
 
