@@ -30,6 +30,8 @@ var ld27 = function () { // start of the ld27 namespace
   //
 
   var caps = ludum.browserCapabilities();
+  var rayBox = new ludum.RayBoxIntersector();
+  var raySphere = new ludum.RaySphereIntersector();
 
   var loader = null;
   var renderer = null;
@@ -43,6 +45,10 @@ var ld27 = function () { // start of the ld27 namespace
   var hudMain = null;
   var hudAmmo = null;
   var hudLife = null;
+
+  //
+  // Resource collections
+  //
 
   var meshes = {
     'scout': null,
@@ -66,6 +72,11 @@ var ld27 = function () { // start of the ld27 namespace
     'ammo': null
   };
 
+
+  //
+  // Game levels
+  //
+
   var levels = [
     {
       'name': 'level1',
@@ -80,7 +91,13 @@ var ld27 = function () { // start of the ld27 namespace
     },
   ];
 
-  var player = {
+
+  //
+  // Player data
+  //
+
+  // Default values for the attributes in the 'player' object.
+  var playerSettings = {
     'radius': 0.5,          // Radius of the player, for collision detection.
     'life': 100,            // Amount of life left. Bad news when this reaches zero...
     'ammo': 5,              // Number of shots remaining.
@@ -88,8 +105,22 @@ var ld27 = function () { // start of the ld27 namespace
     'lastShotT': 0,         // Time the last shot was taken, in seconds since the start of the current state.
   };
 
-  var rayBox = new ludum.RayBoxIntersector();
-  var raySphere = new ludum.RaySphereIntersector();
+  var player = {
+    // Attributes will be set up by copying everything from playerSettings into
+    // player. Deliberately leaving them undefined on startup, to help catch
+    // any cases where this isn't being done.
+  };
+
+
+  //
+  // Director data
+  //
+
+  // The director controls when and where enemies spawn. Yes, I've borrowed
+  // this term from Left 4 Dead. If this game can be half as that, I'll be very
+  // happy indeed. :-)
+  var director = {
+  };
 
 
   //
@@ -289,6 +320,15 @@ var ld27 = function () { // start of the ld27 namespace
   }
 
 
+  function _startOBJLoader(objURL, onLoad, onError, mtlURL)
+  {
+    var objLoader = new THREE.OBJMTLLoader();
+    objLoader.addEventListener('load', function (ev) { onLoad(ev.content); });
+    objLoader.addEventListener('error', function (ev) { onError(ev.message); });
+    objLoader.load(objURL, mtlURL);
+  }
+
+
   //
   // The 'loadingFinished' state
   //
@@ -331,9 +371,8 @@ var ld27 = function () { // start of the ld27 namespace
       music.ominous.play();
 
       // Reset the player.
-      player.life = 100;
-      player.ammo = 5;
-      player.lastShotT = -player.minShotSpacing;
+      for (var k in playerSettings)
+        player[k] = playerSettings[k];
     },
 
     'draw': function ()
@@ -352,7 +391,7 @@ var ld27 = function () { // start of the ld27 namespace
       // Guess what we're doing here...
       controls.update(dt);
 
-      // TODO: all the game logic!
+      // And now for the game logic!
       player.life = Math.max(player.life - 10 * dt, 0);
       if (ludum.isButtonPressed(ludum.buttons.LEFT)) {
         if (ludum.globals.stateT - player.lastShotT > player.minShotSpacing) {
@@ -360,6 +399,7 @@ var ld27 = function () { // start of the ld27 namespace
           player.lastShotT = ludum.globals.stateT;
         }
       }
+
       // Update the HUDs. 
       _updateHUDs();
     },
@@ -427,19 +467,6 @@ var ld27 = function () { // start of the ld27 namespace
     this.mesh.receiveShadow = true;
     this.mesh.position.set(this.x, this.h / 2.0, this.z);
     this.mesh.rotation.set(0.0, this.orientation, 0.0);
-  }
-
-
-  //
-  // Loading helpers
-  //
-
-  function _startOBJLoader(objURL, onLoad, onError, mtlURL)
-  {
-    var objLoader = new THREE.OBJMTLLoader();
-    objLoader.addEventListener('load', function (ev) { onLoad(ev.content); });
-    objLoader.addEventListener('error', function (ev) { onError(ev.message); });
-    objLoader.load(objURL, mtlURL);
   }
 
 
