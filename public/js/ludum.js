@@ -1294,7 +1294,7 @@ var ludum = function () {  // start of the ludum namespace
 
     var discriminant = B * B - 4 * A * C;
     if (discriminant < 0.0)
-      return false;
+      return Number.POSITIVE_INFINITY;
 
     var discSqrt = Math.sqrt(discriminant);
     var ts = (-B - discSqrt) / (2 * A);
