@@ -447,6 +447,7 @@ var ld27 = function () { // start of the ld27 namespace
       controls.update(dt);
       updateView(player);
       if (canShoot(player) && playerWantsToShoot()) {
+        console.log('PEW!');
         fire(player);
       }
       else if (isShooting(player)) {
@@ -461,6 +462,7 @@ var ld27 = function () { // start of the ld27 namespace
         enemyMove(dt, enemy);
         updateView(enemy);
         if (canShoot(enemy) && enemyWantsToShoot(enemy)) {
+          console.log('enemy ' + i + ' is firing at you!');
           fire(enemy);
         }
         else if (isShooting(enemy)) {
@@ -496,7 +498,7 @@ var ld27 = function () { // start of the ld27 namespace
   {
     if (who.ammo == 0)
       return false;
-    if ((who.lastShotT + who.minShotSpacing) < ludum.globals.stateT)
+    if ((who.lastShotT + who.minShotSpacing) > ludum.globals.stateT)
       return false;
     return true;
   }
@@ -504,7 +506,7 @@ var ld27 = function () { // start of the ld27 namespace
 
   function isShooting(who)
   {
-    return (who.lastShotT + who.shotDuration) < ludum.globals.stateT;
+    return (who.lastShotT + who.shotDuration) > ludum.globals.stateT;
   }
 
 
@@ -541,7 +543,7 @@ var ld27 = function () { // start of the ld27 namespace
     // maximum range of their weapon.
 
     var enemyToPlayer = new THREE.Vector3();
-    enemyToPlayer.subtractVectors(player.pos, enemy.pos);
+    enemyToPlayer.subVectors(player.pos, enemy.pos);
 
     // Is the player in range?
     var distanceSq = enemyToPlayer.lengthSq();
@@ -786,7 +788,7 @@ var ld27 = function () { // start of the ld27 namespace
   {
     var pos = fromEntity.pos;
     var dir = new THREE.Vector3();
-    dir.subtractVectors(toEntity.pos, fromEntity.pos);
+    dir.subVectors(toEntity.pos, fromEntity.pos);
 
     var hit = firstHit(fromEntity, pos, dir, Number.POSITIVE_INFINITY);
     return hit.entity === toEntity;
