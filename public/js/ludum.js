@@ -75,11 +75,7 @@ var ludum = function () {  // start of the ludum namespace
     'mouse': {
       'x': 0,             // Last known mouse x location.
       'y': 0,             // Last known mouse y location.
-      'dx': 0,            // Change in x position relative to the previous mouse event.
-      'dy': 0,            // Change in y position relative to the previous mouse event.
       'buttonsDown': {},  // Map of which mouse buttons are currently held down.
-      'isLocked': false,  // True if a call to ludum.lockPointer was successful.
-      'lockedTo': null,   // When using the PointerLock API, this is the element that the pointer is locked to.
     },
   };
 
@@ -580,8 +576,8 @@ var ludum = function () {  // start of the ludum namespace
   {
     var btn = event.button;
     globals.mouse.buttonsDown[btn] = true;
-    if (!globals.mouse.isLocked)
-      _updateUnlockedMousePos(event);
+    globals.mouse.x = event.clientX; // clientX is the DOM standard property.
+    globals.mouse.y = event.clientY; // clientY is the DOM standard property.
   }
 
 
@@ -589,93 +585,15 @@ var ludum = function () {  // start of the ludum namespace
   {
     var btn = event.button;
     globals.mouse.buttonsDown[btn] = false;
-    if (!globals.mouse.isLocked)
-      _updateUnlockedMousePos(event);
+    globals.mouse.x = event.clientX; // clientX is the DOM standard property.
+    globals.mouse.y = event.clientY; // clientY is the DOM standard property.
   }
 
 
   function _mouseMove(event)
   {
-    if (!globals.mouse.isLocked)
-      _updateUnlockedMousePos(event);
-  }
-
-
-  function _mouseMoveRelative(ev)
-  {
-    var dx = ev.movementX || ev.mozMovementX || ev.webkitMovementX || 0;
-    var dy = ev.movementY || ev.mozMovementY || ev.webkitMovementY || 0;
-    globals.mouse.x += ev.dx;
-    globals.mouse.y += ev.dy;
-    globals.mouse.dx = dx;
-    globals.mouse.dy = dy;
-  }
-
-
-  function _updateUnlockedMousePos(event)
-  {
-    var x = event.clientX;
-    var y = event.clientY;
-    globals.mouse.dx = x - globals.mouse.x;
-    globals.mouse.dy = y - globals.mouse.y;
-    globals.mouse.x = x;
-    globals.mouse.y = y;
-  }
-
-
-  function lockPointer(elem)
-  {
-    if (globals.mouse.isLocked)
-      return;
-
-    if (!elem.requestPointerLock)
-      elem.requestPointerLock = elem.mozRequestPointerLock || elem.webkitRequestPointerLock;
-    if (!elem.requestPointerLock)
-      return;
-
-    // Hook pointer lock state change events
-    var lockChanged = function () { _pointerLockChanged(elem); }
-    document.addEventListener('pointerlockchange', lockChanged, false);
-    document.addEventListener('mozpointerlockchange', lockChanged, false);
-    document.addEventListener('webkitpointerlockchange', lockChanged, false);
-
-    // Hook the pointer lock error events.
-    document.addEventListener('pointerlockchange', _pointerLockError, false);
-    document.addEventListener('mozpointerlockchange', _pointerLockError, false);
-    document.addEventListener('webkitpointerlockchange', _pointerLockError, false);
-
-    console.log('requesting pointer lock');
-    elem.requestPointerLock();
-  }
-
-
-  function _pointerLockChanged(requestedElement)
-  {
-    console.log('got pointer lock changed');
-    if (document.pointerLockElement === requestedElement ||
-        document.mozPointerLockElement === requestedElement ||
-        document.webkitPointerLockElement === requestedElement) {
-      // Pointer was just locked
-      // Enable the mousemove listener
-      document.addEventListener("mousemove", this.moveCallback, false);
-      mouse.isLocked = true;
-      mouse.lockedTo = requestedElement;
-      console.log('pointer lock enabled');
-    }
-    else {
-      // Pointer was just unlocked
-      // Disable the mousemove listener
-      document.removeEventListener("mousemove", this.moveCallback, false);
-      mouse.isLocked = false;
-      mouse.lockedTo = null;
-      console.log('pointer lock removed');
-    }
-  }
-
-
-  function _pointerLockError()
-  {
-    console.log('got pointer lock changed');
+    globals.mouse.x = event.clientX; // clientX is the DOM standard property.
+    globals.mouse.y = event.clientY; // clientY is the DOM standard property.
   }
 
 
@@ -683,8 +601,7 @@ var ludum = function () {  // start of the ludum namespace
   // Sound effects
   //
 
-  function addSound(name, sources)
-  {
+  function addSound(name, sources) {
     var audioElement = document.createElement('audio');
     for (var i = 0, endI = sources.length; i < endI; i++) {
       var sourceElement = document.createElement('source');
@@ -695,8 +612,7 @@ var ludum = function () {  // start of the ludum namespace
   }
 
 
-  function playSound(name)
-  {
+  function playSound(name) {
     var sound = config.sounds[name];
     if (sound === undefined)
       return;
@@ -711,8 +627,7 @@ var ludum = function () {  // start of the ludum namespace
   }
 
 
-  function stopSound(name)
-  {
+  function stopSound(name) {
     var sound = config.sounds[name];
     if (sound === undefined)
       return;
@@ -732,8 +647,7 @@ var ludum = function () {  // start of the ludum namespace
       'canvas': !! window.CanvasRenderingContext2D,
 	    'webgl': (function () { try { return !! window.WebGLRenderingContext && !! document.createElement( 'canvas' ).getContext( 'experimental-webgl' ); } catch( e ) { return false; } } )(),
 	    'workers': !! window.Worker,
-	    'fileapi': window.File && window.FileReader && window.FileList && window.Blob,
-      'pointerlock': 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document,
+	    'fileapi': window.File && window.FileReader && window.FileList && window.Blob
     };
   }
 
@@ -1363,7 +1277,6 @@ var ludum = function () {  // start of the ludum namespace
     'useMouse': useMouse,
     'anyButtonPressed': anyButtonPressed,
     'isButtonPressed': isButtonPressed,
-    'lockPointer': lockPointer,
     // Sound functions
     'addSound': addSound,
     'playSound': playSound,
