@@ -452,8 +452,10 @@ var ld27 = function () { // start of the ld27 namespace
       }
       else if (isShooting(player)) {
         var whoGotHit = firstHit(player, player.pos, player.dir, player.range);
-        if (whoGotHit.type == HitType.ENEMY)
+        if (whoGotHit.type == HitType.ENEMY) {
           damage(dt, whoGotHit, player.damage, player.shotDuration);
+          console.log('Got one!');
+        }
       }
 
       // Update the enemies.
@@ -468,8 +470,13 @@ var ld27 = function () { // start of the ld27 namespace
         else if (isShooting(enemy)) {
           var whoGotHit = firstHit(enemy, enemy.pos, enemy.dir, enemy.range);
           // Allow 'friendly fire' between enemies to cause damage...
-          if (whoGotHit.type == HitType.PLAYER || whoGotHit.type == HitType.ENEMY)
+          if (whoGotHit.type == HitType.PLAYER || whoGotHit.type == HitType.ENEMY) {
             damage(dt, whoGotHit, enemy.damage, enemy.shotDuration);
+            if (whoGotHit.type == HitType.PLAYER)
+              console.log('you got hit by enemy ' + i);
+            else
+              console.log('Friendly fire! Enemy ' + i + ' is on a rampage!');
+          }
         }
       }
 
