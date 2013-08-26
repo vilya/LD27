@@ -24,6 +24,14 @@ var ld27 = function () { // start of the ld27 namespace
   var Y_AXIS = new THREE.Vector3(0, 1, 0);
   var Z_AXIS = new THREE.Vector3(0, 0, 1);
 
+  // Hit type enum.
+  var HitType = {
+    'NOTHING': 0,
+    'PLAYER': 1,
+    'ENEMY': 2,
+    'BUILDING': 3
+  };
+
 
   //
   // Global variables
@@ -87,9 +95,11 @@ var ld27 = function () { // start of the ld27 namespace
         { 'x':  20, 'z':  10, 'orientation':  0, 'w':  5, 'h': 20, 'd':  5, 'color': 0x555560 },
         { 'x': -10, 'z':  20, 'orientation': 30, 'w':  5, 'h': 30, 'd':  5, 'color': 0x555555 },
         { 'x':  30, 'z': -20, 'orientation':  0, 'w': 10, 'h': 10, 'd': 25, 'color': 0x555555 },
-      ]
+      ],
+      'maxEnemies': 10,
     },
   ];
+  var currentLevel = 0;
 
 
   //
@@ -102,13 +112,21 @@ var ld27 = function () { // start of the ld27 namespace
     'life': 100,            // Amount of life left. Bad news when this reaches zero...
     'ammo': 5,              // Number of shots remaining.
     'minShotSpacing': 1.0,  // Minimum time between shots in seconds.
-    'lastShotT': 0,         // Time the last shot was taken, in seconds since the start of the current state.
+    'shotDuration': 0.5,    // How long the laser beam stays on for.
+    'lastShotT': -100.0,    // Time the last shot was taken, in seconds since the start of the current state.
+    'damage': 50,           // The amount of life taken off an enemy that we hit with a shot.
+    'range': 30,            // Set weapon range to 30 metres.
   };
 
   var player = {
-    // Attributes will be set up by copying everything from playerSettings into
-    // player. Deliberately leaving them undefined on startup, to help catch
-    // any cases where this isn't being done.
+    'pos': new THREE.Vector3(),
+    'dir': new THREE.Vector3(),
+    'obj3D': null,          // Gets set to the 3D object for the player.
+    'rangeSq': null,        // Gets set to the square of the weapon range
+
+    // Other attributes will be set up by copying everything from
+    // playerSettings into player. Deliberately leaving them undefined on
+    // startup, to help catch any cases where this isn't being done.
   };
 
 
@@ -116,10 +134,33 @@ var ld27 = function () { // start of the ld27 namespace
   // Director data
   //
 
+  var enemySettings = {
+    'radius': 1.0,
+    'life': 50,
+    'ammo': 9999,
+    'minShotSpacing': 0.5,  // Minimum time between shots, in seconds.
+    'shotDuration': 0.25,   // How long the laser beam stays on for.
+    'lastShotT': -100.0,    // When the last shot was fired, in seconds since the start of the current state.
+    'damage': 25,           // How much life gets taken off something hit by this weapon.
+    'range': 30,            // Set weapon range to 30 metres.
+    'targetAngle': 35,      // Set the target cone to 35 degrees
+  };
+
+  var enemy = {
+    'pos': new THREE.Vector3(),
+    'dir': new THREE.Vector3(),
+    'obj3D': null,          // Gets set to the 3D object for the player.
+    'rangeSq': null,        // Gets set to the square of the weapon range
+    'targetHalfAngle': null,
+  };
+
   // The director controls when and where enemies spawn. Yes, I've borrowed
   // this term from Left 4 Dead. If this game can be half as that, I'll be very
   // happy indeed. :-)
   var director = {
+    'enemies': [],
+    'lastSpawnT': -100.0,
+    'minSpawnSpacing': 10.0,  // Minimum time between spawning enemies, in seconds.
   };
 
 
@@ -375,6 +416,18 @@ var ld27 = function () { // start of the ld27 namespace
       // Reset the player.
       for (var k in playerSettings)
         player[k] = playerSettings[k];
+      player.pos.set(0.0, 0.0, 0.0);
+      player.dir.set(0.0, 0.0, -1.0);
+      player.obj3D = camera;
+      player.rangeSq = player.range * player.range;
+
+      // Remove all enemies.
+      for (var i = 0, endI = director.enemies.length; i < endI; ++i)
+        director.enemies[i].life = 0;
+      reapEnemies();
+
+      // Reset the director.
+      director.lastSpawnT = director.minSpawnSpacing * -2;
     },
 
     'draw': function ()
@@ -390,31 +443,214 @@ var ld27 = function () { // start of the ld27 namespace
       // dt is in milliseconds, so we'll convert it to seconds for convenience.
       var dt = dt / 1000.0;
 
-      // Guess what we're doing here...
+      // Update the player and check whether we've fired our FRICKING LASER.
       controls.update(dt);
+      updateView(player);
+      if (canShoot(player) && playerWantsToShoot()) {
+        fire(player);
+      }
+      else if (isShooting(player)) {
+        var whoGotHit = firstHit(player, player.pos, player.dir, player.range);
+        if (whoGotHit.type == HitType.ENEMY)
+          damage(dt, whoGotHit, player.damage, player.shotDuration);
+      }
 
-      // And now for the game logic!
-      player.life = Math.max(player.life - 10 * dt, 0);
-      if (ludum.isButtonPressed(ludum.buttons.LEFT)) {
-        if (ludum.globals.stateT - player.lastShotT > player.minShotSpacing) {
-          player.ammo = Math.max(player.ammo - 1, 0);
-          player.lastShotT = ludum.globals.stateT;
+      // Update the enemies.
+      for (var i = 0, endI = director.enemies.length; i < endI; ++i) {
+        var enemy = director.enemies[i];
+        enemyMove(dt, enemy);
+        updateView(enemy);
+        if (canShoot(enemy) && enemyWantsToShoot(enemy)) {
+          fire(enemy);
+        }
+        else if (isShooting(enemy)) {
+          var whoGotHit = firstHit(enemy, enemy.pos, enemy.dir, enemy.range);
+          // Allow 'friendly fire' between enemies to cause damage...
+          if (whoGotHit.type == HitType.PLAYER || whoGotHit.type == HitType.ENEMY)
+            damage(dt, whoGotHit, enemy.damage, enemy.shotDuration);
         }
       }
 
+      // Get rid of any dead enemies. Don't want them cluttering up the place...
+      reapEnemies();
+
+      // Spawn new enemies, maybe?
+      if (directorCanSpawn() && directorWantsToSpawn())
+        spawn();
+
       // Update the HUDs. 
-      _updateHUDs();
+      updateHUDs();
     },
   };
 
 
-  function _updateHUDs()
+  function updateView(entity)
+  {
+    entity.pos.copy(entity.obj3D.position);
+    entity.dir.set(0, 0, -1);
+    localToWorldRay(entity.obj3D, entity.pos, entity.dir);
+  }
+
+
+  function canShoot(who)
+  {
+    if (who.ammo == 0)
+      return false;
+    if ((who.lastShotT + who.minShotSpacing) < ludum.globals.stateT)
+      return false;
+    return true;
+  }
+
+
+  function isShooting(who)
+  {
+    return (who.lastShotT + who.shotDuration) < ludum.globals.stateT;
+  }
+
+
+  function fire(who)
+  {
+    who.ammo = who.ammo - 1;
+    who.lastShotT = ludum.globals.stateT;
+  }
+
+
+  function damage(dt, who, baseDamageAmount, shotDuration)
+  {
+    var actualDamage = baseDamageAmount * dt / shotDuration;
+    who.life = Math.max(who.life - actualDamage, 0);
+  }
+
+
+  function playerWantsToShoot()
+  {
+    return ludum.isButtonPressed(ludum.buttons.LEFT);
+  }
+
+
+  function enemyMove(enemy)
+  {
+    // TODO
+  }
+
+
+  function enemyWantsToShoot(enemy)
+  {
+    // Check whether the player is inside the targetting cone of the enemy.
+    // The targetting cone extends directly in front of the enemy up to the
+    // maximum range of their weapon.
+
+    var enemyToPlayer = new THREE.Vector3();
+    enemyToPlayer.subtractVectors(player.pos, enemy.pos);
+
+    // Is the player in range?
+    var distanceSq = enemyToPlayer.lengthSq();
+    if (distanceSq > enemy.range)
+      return false;
+
+    // Is the player inside our targetting cone?
+    var cosineToPlayer = enemyToPlayer.dot(enemy.dir) / Math.sqrt(distanceSq);
+    if (cosineToPlayer > Math.cos(enemy.targetHalfAngle))
+      return false;
+
+    // Can we actually see them? (Doing this last because it's the most
+    // expensive check.
+    if (!lineOfSight(enemy, player))
+      return false;
+
+    return true;
+  }
+
+
+  function reapEnemies()
+  {
+    var deadEnemies = director.enemies.filter(isDead);
+    var liveEnemies = director.enemies.filter(isAlive);
+
+    var enemyContainer = world.getObjectByName('enemies');
+    for (var i = 0, endI = deadEnemies.length; i < endI; ++i)
+      enemyContainer.remove(deadEnemies[i].obj3D);
+
+    director.enemies = liveEnemies;
+  }
+
+
+  function isDead(who)
+  {
+    return who.life == 0;
+  }
+
+
+  function isAlive(who)
+  {
+    return who.life > 0;
+  }
+
+
+  function updateHUDs()
   {
     var ammoStr = player.ammo.toString();
     var lifeStr = ludum.roundTo(player.life, 0) + "%";
 
     hudAmmo.setText(ammoStr, icons.ammo);
     hudLife.setText(lifeStr, icons.life);
+  }
+
+
+  function directorCanSpawn()
+  {
+    var level = levels[currentLevel];
+    if (director.enemies.length >= level.maxEnemies)
+      return false;
+    if ((director.lastSpawnT + director.minSpawnSpacing) > ludum.globals.stateT)
+      return false;
+    return true;
+  }
+
+
+  function directorWantsToSpawn()
+  {
+    // For now, just throw the enemies out there as quickly as possible.
+    return true;
+  }
+
+
+  function spawn()
+  {
+    var level = levels[currentLevel];
+
+    // Create a new enemy.
+    var enemyMesh = meshes.scout.clone();
+    var enemy = {
+      'pos': new THREE.Vector3(),
+      'dir': new THREE.Vector3(),
+      'obj3D': enemyMesh,
+    };
+    for (var k in enemySettings)
+      enemy[k] = enemySettings[k];
+    enemy.rangeSq = enemy.range * enemy.range;
+    enemy.targetHalfAngle = ludum.radians(enemy.angle) / 2.0;
+
+    // Choose the initial position & orientation.
+    enemy.pos.set((Math.random() - 0.5) * level.width, 1.8, (Math.random() - 0.5) * level.depth);
+    enemy.dir.set(0, 0, -1);
+    enemyMesh.position.copy(enemy.pos);
+
+    // Add the enemy to the world.
+    world.getObjectByName('enemies').add(enemyMesh);
+
+    director.enemies.push(enemy);
+    director.lastSpawnT = ludum.globals.stateT;
+    console.log('new enemy spawned at ' + enemy.pos.x + ", " + enemy.pos.z + "; there are now " + director.enemies.length + " enemies.");
+  }
+
+
+  function localToWorldRay(obj3D, src, dir)
+  {
+    dir.add(src);
+    obj3D.localToWorld(src);
+    obj3D.localToWorld(dir);
+    dir.sub(src);
   }
 
 
@@ -529,10 +765,9 @@ var ld27 = function () { // start of the ld27 namespace
     raySphere.setRaySrc(pos.x, pos.y, pos.z);
     raySphere.setRayDir(delta.x, delta.y, delta.z, true);
 
-    var t0 = 0.00001;
     var t1 = delta.length() + offset;
 
-    var enemyRadius = 1.0;
+    var enemyRadius = 1.0; // TODO: set this properly
     var enemies = world.getObjectByName('enemies').children;
     var enemyPos = new THREE.Vector3();
     for (var i = 0, end = enemies.length; i < end; ++i) {
@@ -544,6 +779,103 @@ var ld27 = function () { // start of the ld27 namespace
     }
 
     return false;
+  }
+
+
+  function lineOfSight(fromEntity, toEntity)
+  {
+    var pos = fromEntity.pos;
+    var dir = new THREE.Vector3();
+    dir.subtractVectors(toEntity.pos, fromEntity.pos);
+
+    var hit = firstHit(fromEntity, pos, dir, Number.POSITIVE_INFINITY);
+    return hit.entity === toEntity;
+  }
+
+
+  // Returns: { 'type': HitType, 't': float, 'entity': the thing we hit }
+  function firstHit(entity, src, dir, tMax)
+  {
+    var hit = { 'type': HitType.NOTHING, 't': tMax, 'entity': null };
+    _firstPlayerHit(entity, src, dir, hit);
+    _firstEnemyHit(entity, src, dir, hit);
+    _firstBuildingHit(entity, src, dir, hit);
+    return hit;
+  }
+
+
+  function _firstPlayerHit(entity, src, dir, hit)
+  {
+    if (entity === player)
+      return;
+
+    raySphere.setRaySrc(src.x, src.y, src.z);
+    raySphere.setRayDir(dir.x, dir.y, dir.z, true);
+    raySphere.setSphere(player.pos.x, player.pos.y, player.pos.z, player.radius);
+
+    var t = raySphere.intersect(0, hit.t);
+    if (t < hit.t) {
+      hit.type = HitType.PLAYER;
+      hit.t = t;
+      hit.entity = player;
+    }
+  }
+
+
+  function _firstEnemyHit(entity, src, dir, hit)
+  {
+    raySphere.setRaySrc(src.x, src.y, src.z);
+    raySphere.setRayDir(dir.x, dir.y, dir.z, true);
+
+    for (var i = 0, end = director.enemies.length; i < end; ++i) {
+      var enemy = director.enemies[i];
+      if (enemy === entity)
+        continue;
+
+      raySphere.setSphere(enemy.pos.x, enemy.pos.y, enemy.pos.z, enemy.radius);
+
+      var t = raySphere.intersect(0, hit.t);
+      if (t < hit.t) {
+        hit.type = HitType.ENEMY;
+        hit.t = t;
+        hit.entity = enemy;
+      }
+    }
+  }
+
+
+  function _firstBuildingHit(entity, src, dir, hit)
+  {
+    var localSrc = new THREE.Vector3();
+    var localDir = new THREE.Vector3();
+
+    var level = levels[currentLevel];
+    for (var i = 0, end = level.buildings.length; i < end; ++i) {
+      var building = level.buildings[i];
+
+      localSrc.copy(src);
+      building.mesh.worldToLocal(localSrc);
+
+      localDir.copy(src);
+      localDir.add(dir);
+      building.mesh.worldToLocal(localDir);
+      localDir.sub(localSrc);
+
+      var halfW = building.w / 2.0;
+      var halfH = building.h / 2.0;
+      var halfD = building.d / 2.0;
+
+      rayBox.setRaySrc(localSrc.x, localSrc.y, localSrc.z);
+      rayBox.setRayDir(localDir.x, localDir.y, localDir.z, true);
+      rayBox.setBox(-halfW, -halfH, -halfD, halfW, halfH, halfD);
+
+      var t = rayBox.intersect(0, hit.t);
+      if (t < hit.t) {
+        hit.type = HitType.BUILDING;
+        hit.t = t;
+        hit.entity = building;
+      }
+    }
   }
 
 
