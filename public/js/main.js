@@ -513,7 +513,7 @@ var ld27 = function () { // start of the ld27 namespace
 
     this.height = 1.8;                // height of eyes above ground level, in metres.
     this.moveSpeed = 10.0;            // movement speed in metres per second.
-    this.turnSpeed = Math.PI / 1000.0; // turning speed in radians per pixel.
+    this.turnSpeed = Math.PI / 256.0; // turning speed in radians per pixel.
 
     this.rotation = new THREE.Vector2(0.0, 0.0);
     this.extraRotation = new THREE.Vector2(0.0, 0.0);
