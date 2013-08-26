@@ -316,8 +316,7 @@ var ld27 = function () { // start of the ld27 namespace
       console.log("entered 'playing' state");
 
       // Add a scout mesh to the scene. TODO: once the spawning logic is in place, take this out.
-      meshes.scout.translateOnAxis(Y_AXIS, 1.8);
-      //meshes.scout.translateOnAxis(Z_AXIS, -5.0);
+      meshes.scout.position.set(0, 1.8, 0);
       world.getObjectByName('enemies').add(meshes.scout);
 
       // Set up FPS-style movement controls and use them to position the camera.
