@@ -578,6 +578,8 @@ var ludum = function () {  // start of the ludum namespace
     globals.mouse.buttonsDown[btn] = true;
     globals.mouse.x = event.clientX; // clientX is the DOM standard property.
     globals.mouse.y = event.clientY; // clientY is the DOM standard property.
+    event.preventDefault();
+    event.stopPropagation();
   }
 
 
@@ -587,6 +589,8 @@ var ludum = function () {  // start of the ludum namespace
     globals.mouse.buttonsDown[btn] = false;
     globals.mouse.x = event.clientX; // clientX is the DOM standard property.
     globals.mouse.y = event.clientY; // clientY is the DOM standard property.
+    event.preventDefault();
+    event.stopPropagation();
   }
 
 
@@ -594,6 +598,8 @@ var ludum = function () {  // start of the ludum namespace
   {
     globals.mouse.x = event.clientX; // clientX is the DOM standard property.
     globals.mouse.y = event.clientY; // clientY is the DOM standard property.
+    event.preventDefault();
+    event.stopPropagation();
   }
 
 
